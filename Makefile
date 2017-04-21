@@ -111,9 +111,12 @@ else
   quiet=quiet_
   Q = @
 endif
+# 如果KBUILD_VERBOSE = 1，则  quiet =；  Q =
+# 否则  quiet=quiet_；  Q = @
 #
 # If the user is running make -s (silent mode), suppress echoing of
 # commands
+#如果用户正在运行make -s（静默模式），则禁止回显命令
 
 ifneq ($(filter 4.%,$(MAKE_VERSION)),)	# make-4
 ifneq ($(filter %s ,$(firstword x$(MAKEFLAGS))),)
@@ -130,44 +133,56 @@ export quiet Q KBUILD_VERBOSE
 # kbuild supports saving output files in a separate directory.
 # To locate output files in a separate directory two syntaxes are supported.
 # In both cases the working directory must be the root of the kernel src.
+# kbuild 支持将输出文件保存到独立的目录
+# 有两种方式去定位输出文件的独立目录
+# 这两种情况，工作目录必须在内核的根目录
 # 1) O=
 # Use "make O=dir/to/store/output/files/"
-#
+# 一种是在终端make时使用 "make O=dir/to/store/output/files/"
 # 2) Set KBUILD_OUTPUT
 # Set the environment variable KBUILD_OUTPUT to point to the directory
 # where the output files shall be placed.
 # export KBUILD_OUTPUT=dir/to/store/output/files/
 # make
-#
+# 另一种则是修改环境变量，export KBUILD_OUTPUT=dir/to/store/output/files/
 # The O= assignment takes precedence over the KBUILD_OUTPUT environment
 # variable.
+# "make O=dir/to/store/output/files/"的设置方法优先于export KBUILD_OUTPUT=dir/to/store/output/files/
+
 
 # KBUILD_SRC is set on invocation of make in OBJ directory
 # KBUILD_SRC is not intended to be used by the regular user (for now)
+#KBUILD_SRC设置为在OBJ目录中调用make\n  KBUILD_SRC不是由普通用户使用（现在）
 ifeq ($(KBUILD_SRC),)
 
 # OK, Make called in directory where kernel src resides
 # Do we want to locate output files in a separate directory?
+# 在内核源目录下调用，我们想讲输出目录定位到一个独立的目录下吗？
 ifeq ("$(origin O)", "command line")
   KBUILD_OUTPUT := $(O)
 endif
 
 # That's our default target when none is given on the command line
+# 如果在终端没有给目标的话，则这个就是默认的目标(在终端键入 make)
 PHONY := _all
 _all:
 
 # Cancel implicit rules on top Makefile
+# 取消顶部Makefile上的隐式规则
 $(CURDIR)/Makefile Makefile: ;
 
 ifneq ($(KBUILD_OUTPUT),)
 # Invoke a second make in the output directory, passing relevant variables
 # check that the output directory actually exists
+# 在输出目录中调用第二个make，传递相关的变量来检查输出目录是否存在
 saved-output := $(KBUILD_OUTPUT)
+#将设置的目录保存下来
 KBUILD_OUTPUT := $(shell mkdir -p $(KBUILD_OUTPUT) && cd $(KBUILD_OUTPUT) \
 								&& /bin/pwd)
+# 通过shell脚本创建输出目录，然后跳转到该目录，并将当前目录的路径赋值给KBUILD_OUTPUT
 $(if $(KBUILD_OUTPUT),, \
      $(error failed to create output directory "$(saved-output)"))
-
+# 如果返回出来的目录为空，则说明输出目录创建失败，然后报错
 PHONY += $(MAKECMDGOALS) sub-make
 
 $(filter-out _all sub-make $(CURDIR)/Makefile, $(MAKECMDGOALS)) _all: sub-make
@@ -176,29 +191,39 @@ $(filter-out _all sub-make $(CURDIR)/Makefile, $(MAKECMDGOALS)) _all: sub-make
 sub-make: FORCE
 	$(Q)$(MAKE) -C $(KBUILD_OUTPUT) KBUILD_SRC=$(CURDIR) \
 	-f $(CURDIR)/Makefile $(filter-out _all sub-make,$(MAKECMDGOALS))
-
+# make -C KBUILD_SRC=当前目录 -f 当前目录/Makefile  
+# make -f 调用指定的makefile
+# 这一句话是代表，如果前面在make的时候，输入了一些参数，则前面讲参数设定完毕以后，在调用一次Makefile
 # Leave processing to above invocation of make
 skip-makefile := 1
 endif # ifneq ($(KBUILD_OUTPUT),)
 endif # ifeq ($(KBUILD_SRC),)
 
+# 前面递归调用Makefile的时候都会执行skip-makefile := 1
 # We process the rest of the Makefile if this is the final invocation of make
+# 当这个为最后一次调用Makefile时，将执行Makefile剩下的内容
 ifeq ($(skip-makefile),)
+# endif在该文件的末尾
+# 从此处到文件末尾的部分是在前面设置好make环境以后才执行的
 
 # Do not print "Entering directory ...",
 # but we want to display it when entering to the output directory
 # so that IDEs/editors are able to understand relative filenames.
+# 不显示目录，但是我们想在进入输出目录的时候显示它
 MAKEFLAGS += --no-print-directory
 
 # Call a source code checker (by default, "sparse") as part of the
 # C compilation.
-#
+# 调用一个源代码检查器（默认为"sparse"）作为C编译的一部分
 # Use 'make C=1' to enable checking of only re-compiled files.
+# 使用'make C=1'，只会检查重新编译的文件
 # Use 'make C=2' to enable checking of *all* source files, regardless
+# 使用'make C=2'，不管是不是重新编译的都检查
 # of whether they are re-compiled or not.
 #
 # See the file "Documentation/sparse.txt" for more details, including
 # where to get the "sparse" utility.
+# 查阅"Documentation/sparse.txt"会获取更多信息，包括在哪获取"sparse"
 
 ifeq ("$(origin C)", "command line")
   KBUILD_CHECKSRC = $(C)
@@ -210,6 +235,9 @@ endif
 # Use make M=dir to specify directory of external module to build
 # Old syntax make ... SUBDIRS=$PWD is still supported
 # Setting the environment variable KBUILD_EXTMOD take precedence
+# 使用make M=dir可以指定额外模块构建的目录，
+# 旧指令make ... SUBDIRS=$PWD任然可以使用
+# 设置环境变量也可以
 ifdef SUBDIRS
   KBUILD_EXTMOD ?= $(SUBDIRS)
 endif
@@ -220,6 +248,8 @@ endif
 
 # If building an external module we do not care about the all: rule
 # but instead _all depend on modules
+# 如果正在构建扩展模块是，我们不用关心all：的规则
+# 而是关注_all:
 PHONY += all
 ifeq ($(KBUILD_EXTMOD),)
 _all: all
@@ -263,12 +293,15 @@ HOSTARCH := $(shell uname -m | \
 
 HOSTOS := $(shell uname -s | tr '[:upper:]' '[:lower:]' | \
 	    sed -e 's/\(cygwin\).*/cygwin/')
-
+# 执行shell命令  uname -m 查看主机类型
+# sed -e命令进行替换，比如将i386替换成i.86，并将结果放入变量HOSTARCH 
+# uname -s 查看主机操作系统，tr '[:upper:]' '[:lower:]'将所有大写变小写，然后假如有cygwin，替换成cygwin.*，并将结果放入变量HOSTOS
 export	HOSTARCH HOSTOS
 
 #########################################################################
 
 # set default to nothing for native builds
+# 将本机构建的默认设置设置为无
 ifeq ($(HOSTARCH),$(ARCH))
 CROSS_COMPILE ?=
 endif
@@ -277,6 +310,7 @@ KCONFIG_CONFIG	?= .config
 export KCONFIG_CONFIG
 
 # SHELL used by kbuild
+# kbuild使用的SHELL
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
@@ -301,6 +335,11 @@ endif
 # multiple symbol definitions are treated as errors, hence the
 # -multiply_defined suppress option to turn off this error.
 #
+# Mac OS X / Darwin的C预处理器是Apple具体的。 它产生许多错误和警告。 我们想绕过它并使用GNU C的cpp。 
+# 为此，我们将-traditional-cpp选项传递给编译器。 注意，-traditional-cpp标志不具有与GNU C标志相同的语义，
+# 它所有的都是以ANSI / ISO C的方式调用GNU预处理器。
+# Apple的链接器类似，由于新的2阶段链接多个符号定义被视为错误，
+# 因此-multiply_defined suppress选项可以关闭此错误。
 ifeq ($(HOSTOS),darwin)
 # get major and minor product version (e.g. '10' and '6' for Snow Leopard)
 DARWIN_MAJOR_VERSION	= $(shell sw_vers -productVersion | cut -f 1 -d '.')
@@ -322,6 +361,8 @@ endif
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
+# 决定是是构建内置的还是模块的，或者是都执行
+# 通常是内置的
 
 KBUILD_MODULES :=
 KBUILD_BUILTIN := 1
@@ -330,6 +371,8 @@ KBUILD_BUILTIN := 1
 # When we're building modules with modversions, we need to consider
 # the built-in objects during the descend as well, in order to
 # make sure the checksums are up to date before we record them.
+# 如果我们执行了 "make modules",将不会编译内建的目标
+# 当我们用modversions构建模块时，我们需要在下降期间考虑内置对象，以便在记录之前确保校验和是最新的。
 
 ifeq ($(MAKECMDGOALS),modules)
   KBUILD_BUILTIN := $(if $(CONFIG_MODVERSIONS),1)
@@ -352,6 +395,7 @@ export KBUILD_MODULES KBUILD_BUILTIN
 export KBUILD_CHECKSRC KBUILD_SRC KBUILD_EXTMOD
 
 # We need some generic definitions (do not try to remake the file).
+# 我们需要一些通用的定义（不要试图去重新make文件）
 scripts/Kbuild.include: ;
 include scripts/Kbuild.include
 
@@ -417,20 +461,24 @@ export RCS_TAR_IGNORE := --exclude SCCS --exclude BitKeeper --exclude .svn \
 
 # ===========================================================================
 # Rules shared between *config targets and build targets
+# 在配置目标和构建目标之间规则是共享的
 
 # Basic helpers built in scripts/
+# 基本的帮助文档内置在脚本
 PHONY += scripts_basic
 scripts_basic:
 	$(Q)$(MAKE) $(build)=scripts/basic
 	$(Q)rm -f .tmp_quiet_recordmcount
 
 # To avoid any implicit rule to kick in, define an empty command.
+# 为了防止隐性规则起作用，定义一个空的命令
 scripts/basic/%: scripts_basic ;
 
 PHONY += outputmakefile
 # outputmakefile generates a Makefile in the output directory, if using a
 # separate output directory. This allows convenient use of make in the
 # output directory.
+# 如果使用单独的输出目录，outputmakefile会在输出目录中生成一个Makefile。 这样可以方便的在输出目录下使用make。
 outputmakefile:
 ifneq ($(KBUILD_SRC),)
 	$(Q)ln -fsn $(srctree) source
@@ -445,7 +493,7 @@ endif
 # For example 'make oldconfig all'.
 # Detect when mixed targets is specified, and make a second invocation
 # of make so .config is not included in this case either (for *config).
-
+# 如果给出两个目标，则会分开一个一个处理
 version_h := include/generated/version_autogenerated.h
 timestamp_h := include/generated/timestamp_autogenerated.h
 
@@ -556,6 +604,7 @@ endif
 # If board code explicitly specified LDSCRIPT or CONFIG_SYS_LDSCRIPT, use
 # that (or fail if absent).  Otherwise, search for a linker script in a
 # standard location.
+# 如果主板代码明确指定了LDSCRIPT或CONFIG_SYS_LDSCRIPT，则使用该代码（或者如果不存在则失败）。 否则，请在标准位置搜索链接描述文件。
 
 ifndef LDSCRIPT
 	#LDSCRIPT := $(srctree)/board/$(BOARDDIR)/u-boot.lds.debug
